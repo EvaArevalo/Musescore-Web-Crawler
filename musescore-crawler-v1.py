@@ -8,7 +8,7 @@ import os
 import subprocess
 import sys, getopt
 
-def crawl(numberOfPages,outputFormat):
+def crawl(minPage,maxPage,outputFormat):
     # set selenium proxy
     prox = Proxy()
     prox.proxy_type = ProxyType.MANUAL
@@ -24,8 +24,7 @@ def crawl(numberOfPages,outputFormat):
     button.click()
 
     #crawl
-    pages_max = numberOfPages + 1
-    for page in range(1,pages_max):
+    for page in range(minPage,maxPage+1):
         url = "https://musescore.com/hub/piano?page=" + str(page)
         print("crawling page: "+ str(page))
         #clear if no of pages is too big
@@ -37,36 +36,45 @@ def crawl(numberOfPages,outputFormat):
             driver.get(url) # go back to grid of scores
             score_list = driver.find_elements_by_xpath("//h2[@class='score-info__title']")
             score_list[index].click()
-            #download
-            driver.execute_script(open("musescore-downloader.js").read())
-            download_button = WebDriverWait(driver, 10).until(
-                        lambda x: x.find_elements_by_xpath("//button[@class='_3L7Ul _3qfU_ _38TLP _3A7i9 _2XPrY _13O-4 _15kzJ']"))
+            try:
+                #download
+                driver.execute_script(open("musescore-downloader.js").read())
+                #try twice, if still error move on
+                try:
+                    download_button = WebDriverWait(driver, 10).until(
+                            lambda x: x.find_elements_by_xpath("//button[@class='_3L7Ul _3qfU_ _38TLP _3A7i9 _2XPrY _13O-4 _15kzJ']"))
+                except:
+                    download_button = WebDriverWait(driver, 10).until(
+                            lambda x: x.find_elements_by_xpath("//button[@class='_3L7Ul _3qfU_ _38TLP _3A7i9 _2XPrY _13O-4 _15kzJ']"))
 
-            #XML
-            if outputFormat == 'MIDI':
-                download_button[2].click()
-            #MIDI
-            elif outputFormat == 'XML':
-                download_button[3].click()
-            else:
-                print("Incorrect usage! please type:"
-                    + "musescore-crawler.py -f <format> -n <numberOfPages>")
-                sys.exit(2)
+                #XML
+                if outputFormat == 'MIDI':
+                    download_button[2].click()
+                #MIDI
+                elif outputFormat == 'XML':
+                    download_button[3].click()
+                else:
+                    print("Incorrect usage! please type:"
+                        + "musescore-crawler.py -f <format> -s <minPage> -e <maxPage>")
+                    sys.exit(2)
 
-            time.sleep(random.randint(10,30))
-            time.sleep(5)
+                time.sleep(random.randint(10,30))
+                time.sleep(5)
+            except:
+                print("Failed opening score, move on to next")
 
 def read_sys_args(argv):
     '''Read commands from command line'''
     mode = None
     outputFormat = None
-    numberOfPages = 0
+    minPage = 0
+    maxPage = 0
 
     try:
-        opts, args = getopt.getopt(argv,"hf:n:")
+        opts, args = getopt.getopt(argv,"hf:s:e:")
     except getopt.GetoptError:
         print("Incorrect usage! please type:"
-        + "musescore-crawler.py -f <format> -n <numberOfPages>")
+        + "musescore-crawler.py -f <format> -s <minPage> -e <maxPage>")
         sys.exit(2)
 
     for opt, arg in opts:
@@ -75,18 +83,20 @@ def read_sys_args(argv):
             + "You can crawl the most recent piano scores .\n"
             + "Pass the format (MIDI or XML) as the -f argument.\n"
             + "Pass the number of pages to crawl (MIDI or XML) as the -n argument.\n"
-            + "Usage: musescore-crawler.py -f <format> -n <numberOfPages> \n")
+            + "Usage: musescore-crawler.py -f <format> -s <minPage> -e <maxPage>\n")
             sys.exit()
         elif opt in ("-f", "--format"):
             outputFormat = arg
-        elif opt in ("-n", "--numberOfPages"):
-            numberOfPages = int(arg)
+        elif opt in ("-s", "--minPage"):
+            minPage = int(arg)
+        elif opt in ("-e", "--maxPage"):
+            maxPage = int(arg)
         else:
                 print("Incorrect usage! please type:"
-                + "musescore-crawler.py -f <format> -n <numberOfPages>")
+                + "musescore-crawler.py -f <format> -s <minPage> -e <maxPage>")
                 sys.exit(2)
 
-    crawl(numberOfPages,outputFormat)
+    crawl(minPage,maxPage,outputFormat)
     print("Done")
 
 if __name__ == '__main__':
